@@ -31,7 +31,15 @@ describe("plugin entry", () => {
       name: "Hermes Learning",
       source: "test",
       registrationMode: "full",
-      config: {},
+      config: {
+        agents: {
+          defaults: {
+            model: {
+              primary: "custom-test/gpt-4.1",
+            },
+          },
+        },
+      },
       pluginConfig: {
         review: {
           toolCallCandidateThreshold: 1,
@@ -138,8 +146,38 @@ describe("plugin entry", () => {
       prePromptMessageCount: 0,
     });
 
-    expect(resolveAgentWorkspaceDir).toHaveBeenCalledWith({}, "alpha");
+    expect(resolveAgentWorkspaceDir).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agents: {
+          defaults: {
+            model: {
+              primary: "custom-test/gpt-4.1",
+            },
+          },
+        },
+      }),
+      "alpha",
+    );
     expect(runEmbeddedPiAgent).toHaveBeenCalledTimes(1);
+    expect(runEmbeddedPiAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "session-1:review",
+        sessionKey: "agent:alpha:main:hermes-review:session-1",
+      }),
+    );
+    expect(runEmbeddedPiAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "custom-test",
+        model: "gpt-4.1",
+        sessionFile: path.join(
+          root,
+          "alpha",
+          ".openclaw-hermes-test",
+          "review-sessions",
+          "session-1-review.jsonl",
+        ),
+      }),
+    );
     expect(
       fs.existsSync(path.join(root, "alpha", ".openclaw-hermes-test", "state.json")),
     ).toBe(true);

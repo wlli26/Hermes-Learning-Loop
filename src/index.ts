@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import type { OpenClawPluginApi, OpenClawPluginConfigSchema } from "openclaw/plugin-sdk";
 import { pluginConfigSchema } from "./config.js";
@@ -52,19 +53,33 @@ const pluginDefinition = {
             agentWorkspaceDir,
             pluginConfig.store.rootDirName,
           );
+          const reviewSessionFile = buildReviewSessionFile({
+            rootDir: storeRootDir,
+            sessionId: params.sessionId,
+          });
+          fs.mkdirSync(path.dirname(reviewSessionFile), { recursive: true });
+          const reviewModel = resolveReviewModelCompat({
+            config: api.config,
+            agentId,
+            fallbackProvider: api.runtime.agent.defaults.provider,
+            fallbackModel: api.runtime.agent.defaults.model,
+          });
           const result = await api.runtime.agent.runEmbeddedPiAgent({
             sessionId: `${params.sessionId}:review`,
-            sessionKey: params.sessionKey,
+            sessionKey: buildReviewSessionKey({
+              agentId,
+              sessionId: params.sessionId,
+              sessionKey: params.sessionKey,
+            }),
             agentId,
             messageProvider: "memory",
             trigger: "memory",
-            sessionFile:
-              params.sessionFile ?? path.join(storeRootDir, "review-session.jsonl"),
+            sessionFile: reviewSessionFile,
             workspaceDir: agentWorkspaceDir,
             config: api.config,
             prompt: params.prompt,
-            provider: api.runtime.agent.defaults.provider,
-            model: api.runtime.agent.defaults.model,
+            provider: reviewModel.provider,
+            model: reviewModel.model,
             verboseLevel: "off",
             timeoutMs: api.runtime.agent.resolveAgentTimeoutMs({ cfg: api.config }),
             runId: `hermes-review:${params.sessionId}:${Date.now()}`,
@@ -142,6 +157,40 @@ function extractReviewText(result: {
   return payloadText || "{}";
 }
 
+function buildReviewSessionKey(params: {
+  agentId: string;
+  sessionId: string;
+  sessionKey?: string;
+}) {
+  const reviewSuffix = `hermes-review:${params.sessionId}`;
+  const parentSessionKey = params.sessionKey?.trim();
+  if (parentSessionKey) {
+    return `${parentSessionKey}:${reviewSuffix}`;
+  }
+  return `agent:${params.agentId}:${reviewSuffix}`;
+}
+
+function buildReviewSessionFile(params: { rootDir: string; sessionId: string }) {
+  return path.join(
+    params.rootDir,
+    "review-sessions",
+    `${sanitizePathSegment(`${params.sessionId}-review`)}.jsonl`,
+  );
+}
+
+function resolveReviewModelCompat(params: {
+  config: object;
+  agentId: string;
+  fallbackProvider: string;
+  fallbackModel: string;
+}) {
+  const configured =
+    readConfiguredAgentModelRef(params.config, params.agentId) ??
+    readConfiguredAgentModelRef(params.config, resolveDefaultAgentIdCompat(params.config));
+
+  return parseModelRefCompat(configured, params.fallbackProvider, params.fallbackModel);
+}
+
 function resolveAgentIdFromSessionKeyCompat(sessionKey: string | undefined) {
   const trimmed = sessionKey?.trim();
   if (!trimmed) {
@@ -185,6 +234,70 @@ function normalizeAgentIdCompat(value: unknown) {
     .slice(0, 64);
 
   return normalized || "main";
+}
+
+function readConfiguredAgentModelRef(config: object, agentId: string) {
+  const record = config as Record<string, unknown>;
+  const agents = record.agents as Record<string, unknown> | undefined;
+  const list = Array.isArray(agents?.list) ? agents.list : [];
+  const matchedAgent = list.find(
+    (item): item is Record<string, unknown> =>
+      Boolean(item && typeof item === "object") &&
+      normalizeAgentIdCompat((item as Record<string, unknown>).id) === normalizeAgentIdCompat(agentId),
+  );
+
+  return (
+    readModelSelectionCompat(matchedAgent?.model) ??
+    readModelSelectionCompat((agents?.defaults as Record<string, unknown> | undefined)?.model)
+  );
+}
+
+function readModelSelectionCompat(value: unknown) {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const primary = (value as Record<string, unknown>).primary;
+  return typeof primary === "string" && primary.trim() ? primary.trim() : undefined;
+}
+
+function parseModelRefCompat(
+  raw: string | undefined,
+  fallbackProvider: string,
+  fallbackModel: string,
+) {
+  const trimmed = raw?.trim();
+  if (!trimmed) {
+    return {
+      provider: fallbackProvider,
+      model: fallbackModel,
+    };
+  }
+
+  const separator = trimmed.indexOf("/");
+  if (separator <= 0 || separator === trimmed.length - 1) {
+    return {
+      provider: fallbackProvider,
+      model: trimmed,
+    };
+  }
+
+  return {
+    provider: trimmed.slice(0, separator),
+    model: trimmed.slice(separator + 1),
+  };
+}
+
+function sanitizePathSegment(value: string) {
+  const normalized = value
+    .trim()
+    .replace(/[^a-z0-9._-]+/giu, "-")
+    .replace(/^-+/u, "")
+    .replace(/-+$/u, "");
+
+  return normalized || "session";
 }
 
 function createPluginConfigSchema(): OpenClawPluginConfigSchema {

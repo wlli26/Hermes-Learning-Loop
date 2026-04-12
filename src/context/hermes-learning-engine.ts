@@ -89,6 +89,10 @@ export function createHermesLearningEngine(
     },
     async afterTurn(params) {
       try {
+        if (isReviewWorkerSession(params.sessionId)) {
+          return;
+        }
+
         const store = resolveStore(options, params);
         const toolCalls = params.messages.filter(isToolLikeMessage);
         const turnKey = params.sessionKey ?? params.sessionId;
@@ -182,16 +186,16 @@ function resolveStore(
   throw new Error("HermesLearningEngine requires store or resolveStore");
 }
 
+function isReviewWorkerSession(sessionId: string) {
+  return sessionId.endsWith(":review");
+}
+
 function summarizeMessages(messages: AgentMessage[]) {
-  return messages
-    .map((message) => {
-      const role = readMessageRole(message);
-      const header = isToolLikeMessage(message) ? `${role}:${readToolName(message)}` : role;
-      const content = readMessageContent(message);
-      return `${header} ${content}`.trim();
-    })
-    .join("\n")
-    .slice(0, 4000);
+  const lines = messages
+    .map((message) => summarizeMessageForReview(message))
+    .filter((line): line is string => Boolean(line));
+  const joined = lines.slice(-20).join("\n");
+  return joined.length <= 4000 ? joined : joined.slice(-4000);
 }
 
 function estimateTokens(messages: AgentMessage[]) {
@@ -209,6 +213,97 @@ function countMatches(messages: AgentMessage[], pattern: RegExp) {
 function isToolLikeMessage(message: AgentMessage) {
   const role = readMessageRole(message);
   return role === "tool" || role === "toolResult";
+}
+
+function summarizeMessageForReview(message: AgentMessage) {
+  const role = readMessageRole(message);
+  const header = isToolLikeMessage(message) ? `${role}:${readToolName(message)}` : role;
+  const content = normalizeWhitespace(readMessageContent(message));
+  if (!content) {
+    return null;
+  }
+  if (shouldSkipSummaryMessage(message, content)) {
+    return null;
+  }
+
+  const summarizedContent = isToolLikeMessage(message)
+    ? summarizeToolLikeContent(content)
+    : truncateForSummary(content, 220);
+  if (!summarizedContent) {
+    return null;
+  }
+  return `${header} ${summarizedContent}`.trim();
+}
+
+function shouldSkipSummaryMessage(message: AgentMessage, content: string) {
+  if (isToolLikeMessage(message)) {
+    const paths = extractPaths(content);
+    if (paths.length > 0 && paths.every((value) => isBootstrapNoisePath(value))) {
+      return true;
+    }
+  }
+  if (isBootstrapNoiseContent(content)) {
+    return true;
+  }
+  if (isToolLikeMessage(message) && /web-tools guidance|web tools guidance/iu.test(content)) {
+    return true;
+  }
+  return false;
+}
+
+function summarizeToolLikeContent(content: string) {
+  const paths = extractPaths(content)
+    .filter((value) => !isBootstrapNoisePath(value))
+    .slice(0, 3);
+  if (paths.length > 0) {
+    return paths.join(", ");
+  }
+  return truncateForSummary(content, 160);
+}
+
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
+function truncateForSummary(value: string, maxChars: number) {
+  if (value.length <= maxChars) {
+    return value;
+  }
+  return `${value.slice(0, maxChars - 1)}…`;
+}
+
+function extractPaths(content: string) {
+  const results = new Set<string>();
+
+  for (const match of content.matchAll(/"(?:path|file_path|cwd)"\s*:\s*"([^"]+)"/gu)) {
+    const candidate = match[1]?.trim();
+    if (candidate) {
+      results.add(candidate);
+    }
+  }
+  for (const match of content.matchAll(/(\/[A-Za-z0-9._\-\/]+(?:\.[A-Za-z0-9._-]+)?)/gu)) {
+    const candidate = match[1]?.trim();
+    if (candidate) {
+      results.add(candidate);
+    }
+  }
+
+  return [...results];
+}
+
+function isBootstrapNoiseContent(content: string) {
+  return (
+    isBootstrapNoisePath(content) ||
+    /#\s*(?:SOUL\.md|USER\.md|MEMORY\.md)\b/iu.test(content) ||
+    /ENOENT: no such file or directory.*(?:SOUL\.md|USER\.md|MEMORY\.md|\/memory\/\d{4}-\d{2}-\d{2}\.md)/iu.test(
+      content,
+    )
+  );
+}
+
+function isBootstrapNoisePath(value: string) {
+  return /(?:^|\/)(?:SOUL\.md|USER\.md|MEMORY\.md)$/iu.test(value)
+    || /\/memory\/\d{4}-\d{2}-\d{2}\.md$/u.test(value);
 }
 
 function readToolName(message: AgentMessage) {
