@@ -5,8 +5,8 @@ export type LearningPaths = {
   reviewsDir: string;
   skillsDir: string;
   memoryDir: string;
-  sqliteFile: string;
   auditLogFile: string;
+  stateFile: string;
 };
 
 export function resolveLearningPaths(params: {
@@ -19,7 +19,7 @@ export function resolveLearningPaths(params: {
     reviewsDir: path.join(rootDir, "reviews"),
     skillsDir: path.join(rootDir, "skills"),
     memoryDir: path.join(rootDir, "memory"),
-    sqliteFile: path.join(rootDir, "index.sqlite"),
     auditLogFile: path.join(rootDir, "learning-log.jsonl"),
+    stateFile: path.join(rootDir, "state.json"),
   };
 }

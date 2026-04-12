@@ -15,6 +15,6 @@ describe("resolveLearningPaths", () => {
     expect(paths.reviewsDir).toBe(path.join(paths.rootDir, "reviews"));
     expect(paths.skillsDir).toBe(path.join(paths.rootDir, "skills"));
     expect(paths.memoryDir).toBe(path.join(paths.rootDir, "memory"));
-    expect(paths.sqliteFile).toBe(path.join(paths.rootDir, "index.sqlite"));
+    expect(paths.stateFile).toBe(path.join(paths.rootDir, "state.json"));
   });
 });
