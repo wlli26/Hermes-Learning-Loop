@@ -8,6 +8,11 @@ describe("plugin entry", () => {
   it("registers an agent-scoped context engine and triggers silent review", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-entry-"));
     const registerContextEngine = vi.fn();
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
     const runEmbeddedPiAgent = vi.fn().mockResolvedValue({
       text: JSON.stringify({
         summary: "learned terse closeout",
@@ -51,11 +56,7 @@ describe("plugin entry", () => {
           runEmbeddedPiAgent,
         },
       },
-      logger: {
-        info() {},
-        warn() {},
-        error() {},
-      },
+      logger,
       registerTool() {},
       registerHook() {},
       registerHttpRoute() {},
@@ -145,5 +146,14 @@ describe("plugin entry", () => {
     expect(
       fs.readdirSync(path.join(root, "alpha", ".openclaw-hermes-test", "reviews")).length,
     ).toBe(1);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining("Hermes learning initialized store"),
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining("Hermes learning review triggered"),
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining("Hermes learning review completed"),
+    );
   });
 });

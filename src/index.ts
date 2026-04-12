@@ -37,6 +37,9 @@ export default definePluginEntry({
           });
           const store = new LearningStore(paths);
           store.initialize();
+          api.logger.info(
+            `Hermes learning initialized store for agent ${agentId} at ${paths.rootDir}`,
+          );
           stores.set(agentId, store);
           return store;
         },
@@ -79,6 +82,24 @@ export default definePluginEntry({
           return {
             text: extractReviewText(result),
           };
+        },
+        onReviewDecision(params) {
+          if (!params.shouldReview) {
+            api.logger.info(
+              `Hermes learning review skipped for session ${params.sessionId}: toolCalls=${params.toolCalls}, score=${params.complexityScore}, reasons=${
+                params.reasonCodes.join(",") || "none"
+              }`,
+            );
+            return;
+          }
+          api.logger.info(
+            `Hermes learning review triggered for session ${params.sessionId}: toolCalls=${params.toolCalls}, score=${params.complexityScore}, reasons=${params.reasonCodes.join(",")}, store=${params.storeDir}`,
+          );
+        },
+        onReviewCompleted(params) {
+          api.logger.info(
+            `Hermes learning review completed for session ${params.sessionId}: reviewId=${params.reviewId}, memories=${params.memoryCount}, skills=${params.skillCount}, store=${params.storeDir}, summary=${params.summary}`,
+          );
         },
         onReviewError(error) {
           api.logger.warn(

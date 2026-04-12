@@ -30,6 +30,24 @@ type HermesLearningEngineOptions = {
   }) => Promise<{ text: string }>;
   applyGrowthResult?: typeof applyGrowthResult;
   buildGrowthPromptAddition?: typeof buildGrowthPromptAddition;
+  onReviewDecision?: (params: {
+    sessionId: string;
+    sessionKey?: string;
+    storeDir: string;
+    shouldReview: boolean;
+    reasonCodes: string[];
+    complexityScore: number;
+    toolCalls: number;
+  }) => void;
+  onReviewCompleted?: (params: {
+    sessionId: string;
+    sessionKey?: string;
+    storeDir: string;
+    reviewId: string;
+    memoryCount: number;
+    skillCount: number;
+    summary: string;
+  }) => void;
   onReviewError?: (error: unknown) => void;
 };
 
@@ -87,6 +105,16 @@ export function createHermesLearningEngine(
           options.reviewThresholds,
         );
 
+        options.onReviewDecision?.({
+          sessionId: params.sessionId,
+          sessionKey: params.sessionKey,
+          storeDir: store.getPaths().rootDir,
+          shouldReview: decision.shouldReview,
+          reasonCodes: decision.reasonCodes,
+          complexityScore: decision.complexityScore,
+          toolCalls: toolCalls.length,
+        });
+
         if (!decision.shouldReview) {
           return;
         }
@@ -118,6 +146,16 @@ export function createHermesLearningEngine(
           store,
           reviewId,
           result,
+        });
+
+        options.onReviewCompleted?.({
+          sessionId: params.sessionId,
+          sessionKey: params.sessionKey,
+          storeDir: store.getPaths().rootDir,
+          reviewId,
+          memoryCount: result.memoryCandidates.length,
+          skillCount: result.skillCandidates.length,
+          summary: result.summary,
         });
 
         lastReviewTurnIndexes.set(
