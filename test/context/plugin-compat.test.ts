@@ -22,6 +22,6 @@ describe("plugin compatibility", () => {
     };
 
     expect(packageJson.name).toBe("hermes-learning");
-    expect(packageJson.openclaw?.extensions).toEqual(["./dist/index.js"]);
+    expect(packageJson.openclaw?.extensions).toEqual(["./dist/src/index.js"]);
   });
 });

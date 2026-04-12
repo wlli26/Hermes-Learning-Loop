@@ -19,7 +19,7 @@
   },
   "openclaw": {
     "extensions": [
-      "./dist/index.js"
+      "./dist/src/index.js"
     ],
     "compat": {
       "pluginApi": ">=2026.3.24-beta.2",
