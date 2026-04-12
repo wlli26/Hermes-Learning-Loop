@@ -1,0 +1,9 @@
+{
+  "id": "hermes-learning",
+  "name": "Hermes Learning",
+  "description": "Hermes-style learning loop plugin for OpenClaw",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}
