@@ -1,5 +1,4 @@
 import path from "node:path";
-import { resolveAgentIdFromSessionKey, resolveDefaultAgentId } from "openclaw/plugin-sdk/agent-runtime";
 import { buildPluginConfigSchema, definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { pluginConfigSchema } from "./config.js";
 import { createHermesLearningEngine } from "./context/hermes-learning-engine.js";
@@ -114,11 +113,11 @@ export default definePluginEntry({
 });
 
 function resolveAgentId(sessionKey: string | undefined, config: object) {
-  const sessionAgentId = resolveAgentIdFromSessionKey(sessionKey);
+  const sessionAgentId = resolveAgentIdFromSessionKeyCompat(sessionKey);
   if (sessionAgentId && sessionAgentId !== "main") {
     return sessionAgentId;
   }
-  return resolveDefaultAgentId(config as never);
+  return resolveDefaultAgentIdCompat(config);
 }
 
 function extractReviewText(result: {
@@ -139,4 +138,49 @@ function extractReviewText(result: {
     .trim();
 
   return payloadText || "{}";
+}
+
+function resolveAgentIdFromSessionKeyCompat(sessionKey: string | undefined) {
+  const trimmed = sessionKey?.trim();
+  if (!trimmed) {
+    return "main";
+  }
+  const match = /^agent:([^:]+):/u.exec(trimmed);
+  return normalizeAgentIdCompat(match?.[1]);
+}
+
+function resolveDefaultAgentIdCompat(config: object) {
+  const record = config as Record<string, unknown>;
+  const agents = record.agents as Record<string, unknown> | undefined;
+  const list = Array.isArray(agents?.list) ? agents.list : [];
+  if (list.length === 0) {
+    return "main";
+  }
+
+  const normalized = list
+    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+    .map((item) => ({
+      id: normalizeAgentIdCompat(item.id),
+      isDefault: item.default === true,
+    }));
+
+  const selected = normalized.find((item) => item.isDefault) ?? normalized[0];
+  return selected?.id ?? "main";
+}
+
+function normalizeAgentIdCompat(value: unknown) {
+  if (typeof value !== "string") {
+    return "main";
+  }
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) {
+    return "main";
+  }
+  const normalized = trimmed
+    .replace(/[^a-z0-9_-]+/gu, "-")
+    .replace(/^-+/u, "")
+    .replace(/-+$/u, "")
+    .slice(0, 64);
+
+  return normalized || "main";
 }
