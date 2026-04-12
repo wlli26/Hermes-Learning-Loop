@@ -1,0 +1,51 @@
+{
+  "id": "hermes-learning",
+  "name": "Hermes Learning",
+  "description": "Hermes-style learning loop plugin for OpenClaw",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "review": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "toolCallCandidateThreshold": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "toolCallForceThreshold": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "cooldownTurns": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "retryWeight": {
+            "type": "number",
+            "minimum": 0
+          },
+          "rerouteWeight": {
+            "type": "number",
+            "minimum": 0
+          },
+          "userCorrectionWeight": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "store": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "rootDirName": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}
