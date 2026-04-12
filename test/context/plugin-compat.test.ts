@@ -12,4 +12,16 @@ describe("plugin compatibility", () => {
     expect(entrySource).not.toContain("openclaw/plugin-sdk/agent-runtime");
     expect(entrySource).not.toContain("openclaw/plugin-sdk/plugin-entry");
   });
+
+  it("keeps package metadata aligned with the manifest id", () => {
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.resolve("package.json"), "utf8"),
+    ) as {
+      name?: string;
+      openclaw?: { extensions?: string[] };
+    };
+
+    expect(packageJson.name).toBe("hermes-learning");
+    expect(packageJson.openclaw?.extensions).toEqual(["./dist/index.js"]);
+  });
 });
