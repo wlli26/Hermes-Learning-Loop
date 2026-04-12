@@ -4,3 +4,12 @@ coverage
 *.sqlite
 *.sqlite-journal
 .DS_Store
+.codex
+.openclaw
+.openclaw-hermes
+AGENTS.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
