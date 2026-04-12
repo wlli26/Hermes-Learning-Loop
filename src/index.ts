@@ -1,17 +1,17 @@
 import path from "node:path";
-import { buildPluginConfigSchema, definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
+import type { OpenClawPluginApi, OpenClawPluginConfigSchema } from "openclaw/plugin-sdk";
 import { pluginConfigSchema } from "./config.js";
 import { createHermesLearningEngine } from "./context/hermes-learning-engine.js";
 import { resolveLearningPaths } from "./runtime/paths.js";
 import { LearningStore } from "./store/learning-store.js";
 
-export default definePluginEntry({
+const pluginDefinition = {
   id: "hermes-learning",
   name: "Hermes Learning",
   description: "Hermes-style learning loop plugin for OpenClaw",
   kind: "context-engine",
-  configSchema: () => buildPluginConfigSchema(pluginConfigSchema as never),
-  register(api) {
+  configSchema: createPluginConfigSchema(),
+  register(api: OpenClawPluginApi) {
     const pluginConfig = pluginConfigSchema.parse(api.pluginConfig ?? {});
 
     api.registerContextEngine("hermes-learning", () => {
@@ -110,7 +110,9 @@ export default definePluginEntry({
       });
     });
   },
-});
+};
+
+export default pluginDefinition;
 
 function resolveAgentId(sessionKey: string | undefined, config: object) {
   const sessionAgentId = resolveAgentIdFromSessionKeyCompat(sessionKey);
@@ -183,4 +185,55 @@ function normalizeAgentIdCompat(value: unknown) {
     .slice(0, 64);
 
   return normalized || "main";
+}
+
+function createPluginConfigSchema(): OpenClawPluginConfigSchema {
+  return {
+    safeParse(value: unknown) {
+      const result = pluginConfigSchema.safeParse(value ?? {});
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data,
+        };
+      }
+      return {
+        success: false,
+        error: {
+          issues: result.error.issues.map((issue) => ({
+            path: issue.path.filter(
+              (segment): segment is string | number =>
+                typeof segment === "string" || typeof segment === "number",
+            ),
+            message: issue.message,
+          })),
+        },
+      };
+    },
+    jsonSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        review: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            toolCallCandidateThreshold: { type: "integer", minimum: 1 },
+            toolCallForceThreshold: { type: "integer", minimum: 1 },
+            cooldownTurns: { type: "integer", minimum: 0 },
+            retryWeight: { type: "number", minimum: 0 },
+            rerouteWeight: { type: "number", minimum: 0 },
+            userCorrectionWeight: { type: "number", minimum: 0 },
+          },
+        },
+        store: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            rootDirName: { type: "string", minLength: 1 },
+          },
+        },
+      },
+    },
+  };
 }
