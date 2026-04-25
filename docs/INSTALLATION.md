@@ -2,8 +2,16 @@
 
 ## 一键安装（推荐）
 
+**GitHub（公网）：**
+
 ```bash
 npx -y github:wlli26/Hermes-Learning-Loop install
+```
+
+**iFlytek GitLab（内网）：**
+
+```bash
+npx -y git+https://git.iflytek.com/hy_spark_agent_builder/workflow-skill/claw-learning-loop.git#develop install
 ```
 
 执行后重启 OpenClaw 即可生效。该命令会自动完成：
@@ -16,9 +24,18 @@ npx -y github:wlli26/Hermes-Learning-Loop install
 
 ### 其他命令
 
+**GitHub：**
+
 ```bash
 npx -y github:wlli26/Hermes-Learning-Loop status     # 查看当前是否启用
 npx -y github:wlli26/Hermes-Learning-Loop uninstall  # 移除插件，恢复原配置
+```
+
+**iFlytek GitLab：**
+
+```bash
+npx -y git+https://git.iflytek.com/hy_spark_agent_builder/workflow-skill/claw-learning-loop.git#develop status
+npx -y git+https://git.iflytek.com/hy_spark_agent_builder/workflow-skill/claw-learning-loop.git#develop uninstall
 ```
 
 ---
