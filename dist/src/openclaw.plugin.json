@@ -33,16 +33,6 @@
           "userCorrectionWeight": {
             "type": "number",
             "minimum": 0
-          },
-          "minMemoryConfidence": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          },
-          "minSkillConfidence": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
           }
         }
       },
@@ -53,14 +43,6 @@
           "rootDirName": {
             "type": "string",
             "minLength": 1
-          },
-          "skillsDirName": {
-            "type": "string",
-            "minLength": 1
-          },
-          "useGlobalState": {
-            "type": "boolean",
-            "description": "Share state.json and memory across all agents (default: true)"
           }
         }
       }

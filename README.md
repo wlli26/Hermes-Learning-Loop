@@ -1,6 +1,24 @@
-# OpenClaw Learning Loop
+# Hermes Learning Loop
 
 让 OpenClaw agent 不只是记住历史，而是逐步形成经验。
+
+## 一键安装
+
+```bash
+npx -y github:wlli26/Hermes-Learning-Loop install
+```
+
+随后重启 OpenClaw 即可生效。其它命令：
+
+```bash
+npx -y github:wlli26/Hermes-Learning-Loop status     # 查看启用状态
+npx -y github:wlli26/Hermes-Learning-Loop uninstall  # 一键卸载
+```
+
+详见 [docs/INSTALLATION.md](./docs/INSTALLATION.md)。
+
+---
+
 
 `OpenClaw Learning Loop` 是一个面向 OpenClaw 的学习闭环插件。它不追求把上下文越堆越长，而是希望让 agent 在每一次真实工作之后，都留下以后还能继续派上用场的东西。
 

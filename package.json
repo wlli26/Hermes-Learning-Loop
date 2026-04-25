@@ -1,10 +1,29 @@
 {
-  "name": "hermes-learning",
+  "name": "hermes-learning-loop",
   "version": "0.1.0",
-  "private": true,
+  "description": "Hermes-style learning loop plugin for OpenClaw — turns each agent turn into reusable skills and memories.",
   "type": "module",
+  "bin": {
+    "hermes-learning-loop": "./bin/cli.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wlli26/Hermes-Learning-Loop.git"
+  },
+  "homepage": "https://github.com/wlli26/Hermes-Learning-Loop#readme",
+  "bugs": {
+    "url": "https://github.com/wlli26/Hermes-Learning-Loop/issues"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepare": "node -e \"try{require('fs').accessSync('dist/src/index.js')}catch(e){require('child_process').execSync('npm run build',{stdio:'inherit'})}\"",
     "test": "vitest run",
     "test:watch": "vitest"
   },

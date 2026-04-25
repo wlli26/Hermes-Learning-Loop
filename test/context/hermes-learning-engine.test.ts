@@ -13,6 +13,8 @@ describe("createHermesLearningEngine", () => {
           { slug: "terse-close", summary: "Close tasks tersely", state: "candidate" },
         ]),
       saveReview: vi.fn().mockReturnValue("review_1"),
+      incrementHitCount: vi.fn(),
+      readSkillContent: vi.fn().mockReturnValue(undefined),
     };
     const engine = createHermesLearningEngine({
       store: store as never,
@@ -23,6 +25,8 @@ describe("createHermesLearningEngine", () => {
         retryWeight: 1,
         rerouteWeight: 1,
         userCorrectionWeight: 1,
+        minMemoryConfidence: 0.5,
+        minSkillConfidence: 0.6,
       },
       decideReview: vi.fn().mockReturnValue({
         shouldReview: true,
@@ -80,6 +84,8 @@ describe("createHermesLearningEngine", () => {
       listRecentMemories: vi.fn().mockReturnValue([]),
       listActiveSkills: vi.fn().mockReturnValue([]),
       saveReview: vi.fn(),
+      incrementHitCount: vi.fn(),
+      readSkillContent: vi.fn().mockReturnValue(undefined),
     };
     const decideReview = vi.fn().mockReturnValue({
       shouldReview: true,
@@ -97,6 +103,8 @@ describe("createHermesLearningEngine", () => {
         retryWeight: 1,
         rerouteWeight: 1,
         userCorrectionWeight: 1,
+        minMemoryConfidence: 0.5,
+        minSkillConfidence: 0.6,
       },
       decideReview,
       runSilentReview,
@@ -119,6 +127,8 @@ describe("createHermesLearningEngine", () => {
       listRecentMemories: vi.fn().mockReturnValue([]),
       listActiveSkills: vi.fn().mockReturnValue([]),
       saveReview: vi.fn().mockReturnValue("review_1"),
+      incrementHitCount: vi.fn(),
+      readSkillContent: vi.fn().mockReturnValue(undefined),
     };
     const buildReviewPrompt = vi.fn().mockReturnValue("review prompt");
 
@@ -131,6 +141,8 @@ describe("createHermesLearningEngine", () => {
         retryWeight: 1,
         rerouteWeight: 1,
         userCorrectionWeight: 1,
+        minMemoryConfidence: 0.5,
+        minSkillConfidence: 0.6,
       },
       decideReview: vi.fn().mockReturnValue({
         shouldReview: true,

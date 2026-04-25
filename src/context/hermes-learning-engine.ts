@@ -2,6 +2,7 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { AssembleResult, ContextEngine, IngestResult } from "openclaw/plugin-sdk";
 import { buildGrowthPromptAddition } from "../growth/growth-recall.js";
 import { applyGrowthResult } from "../growth/growth-writer.js";
+import { advanceSkillLifecycle } from "../growth/skill-lifecycle.js";
 import { buildReviewPrompt } from "../review/review-prompt.js";
 import { runReviewWorker } from "../review/review-worker.js";
 import { LearningStore } from "../store/learning-store.js";
@@ -14,6 +15,8 @@ type ReviewThresholdConfig = {
   retryWeight: number;
   rerouteWeight: number;
   userCorrectionWeight: number;
+  minMemoryConfidence: number;
+  minSkillConfidence: number;
 };
 
 type HermesLearningEngineOptions = {
@@ -77,13 +80,25 @@ export function createHermesLearningEngine(
       const memories = store.listRecentMemories();
       const skills = store.listActiveSkills();
 
+      // 递增被注入的 skill 的命中计数
+      for (const skill of skills) {
+        store.incrementHitCount(skill.slug);
+      }
+
+      // 对 promoted skill 读取全文内容
+      const skillsWithContent = skills.map((skill) => ({
+        ...skill,
+        content:
+          skill.state === "promoted" ? store.readSkillContent(skill.slug) : undefined,
+      }));
+
       return {
         messages: params.messages,
         estimatedTokens: estimateTokens(params.messages),
         systemPromptAddition: (options.buildGrowthPromptAddition ??
           buildGrowthPromptAddition)({
           memories,
-          skills,
+          skills: skillsWithContent,
         }),
       };
     },
@@ -123,9 +138,14 @@ export function createHermesLearningEngine(
           return;
         }
 
+        const existingMemories = store.listRecentMemories();
+        const existingSkills = store.listActiveSkills();
+
         const prompt = (options.buildReviewPrompt ?? buildReviewPrompt)({
           conversationSummary: summarizeMessages(params.messages),
           reasonCodes: decision.reasonCodes,
+          existingMemories,
+          existingSkills,
         });
 
         const result = await runReviewWorker({
@@ -150,6 +170,8 @@ export function createHermesLearningEngine(
           store,
           reviewId,
           result,
+          minMemoryConfidence: options.reviewThresholds.minMemoryConfidence,
+          minSkillConfidence: options.reviewThresholds.minSkillConfidence,
         });
 
         options.onReviewCompleted?.({
@@ -166,6 +188,9 @@ export function createHermesLearningEngine(
           turnKey,
           params.prePromptMessageCount + params.messages.length,
         );
+
+        // 触发 skill 生命周期流转
+        advanceSkillLifecycle(store);
       } catch (error) {
         options.onReviewError?.(error);
       }
@@ -194,7 +219,17 @@ function summarizeMessages(messages: AgentMessage[]) {
   const lines = messages
     .map((message) => summarizeMessageForReview(message))
     .filter((line): line is string => Boolean(line));
-  const joined = lines.slice(-20).join("\n");
+
+  if (lines.length === 0) {
+    return "";
+  }
+
+  // 保留首条消息 + 最后 18 条消息
+  const first = lines[0];
+  const tail = lines.slice(-18);
+  const combined = lines.length <= 19 ? lines : [first, ...tail];
+
+  const joined = combined.join("\n");
   return joined.length <= 4000 ? joined : joined.slice(-4000);
 }
 

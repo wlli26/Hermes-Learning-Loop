@@ -12,14 +12,23 @@ export type LearningPaths = {
 export function resolveLearningPaths(params: {
   agentWorkspaceDir: string;
   rootDirName: string;
+  skillsDirName?: string;
+  globalStateDir?: string;
 }): LearningPaths {
   const rootDir = path.join(params.agentWorkspaceDir, params.rootDirName);
+  const skillsDir = params.skillsDirName
+    ? path.join(params.agentWorkspaceDir, params.skillsDirName)
+    : path.join(rootDir, "skills");
+
+  // 使用全局状态目录（如果提供），否则使用 agent 本地目录
+  const stateDir = params.globalStateDir ?? rootDir;
+
   return {
     rootDir,
     reviewsDir: path.join(rootDir, "reviews"),
-    skillsDir: path.join(rootDir, "skills"),
-    memoryDir: path.join(rootDir, "memory"),
+    skillsDir,
+    memoryDir: path.join(stateDir, "memory"),
     auditLogFile: path.join(rootDir, "learning-log.jsonl"),
-    stateFile: path.join(rootDir, "state.json"),
+    stateFile: path.join(stateDir, "state.json"),
   };
 }

@@ -14,7 +14,10 @@ function parseReviewResult(text: string): ReviewResult {
   } catch (originalError) {
     const extracted = extractFirstJsonObject(text);
     if (!extracted) {
-      throw originalError;
+      const preview = text.length > 200 ? text.slice(0, 200) + "..." : text;
+      throw new Error(
+        `Failed to parse review result. Original error: ${originalError instanceof Error ? originalError.message : String(originalError)}. Text preview: ${preview}`,
+      );
     }
     return JSON.parse(extracted) as ReviewResult;
   }

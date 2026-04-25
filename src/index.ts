@@ -18,6 +18,14 @@ const pluginDefinition = {
     api.registerContextEngine("hermes-learning", () => {
       const stores = new Map<string, LearningStore>();
 
+      // 解析全局 state 目录（使用 main agent 的 workspace）
+      const globalStateDir = pluginConfig.store.useGlobalState
+        ? path.join(
+            api.runtime.agent.resolveAgentWorkspaceDir(api.config, "main"),
+            pluginConfig.store.rootDirName,
+          )
+        : undefined;
+
       return createHermesLearningEngine({
         reviewThresholds: pluginConfig.review,
         resolveStore(params) {
@@ -34,11 +42,13 @@ const pluginDefinition = {
           const paths = resolveLearningPaths({
             agentWorkspaceDir,
             rootDirName: pluginConfig.store.rootDirName,
+            skillsDirName: pluginConfig.store.skillsDirName,
+            globalStateDir,
           });
           const store = new LearningStore(paths);
           store.initialize();
           api.logger.info(
-            `Hermes learning initialized store for agent ${agentId} at ${paths.rootDir}`,
+            `Hermes learning initialized store for agent ${agentId} at ${paths.rootDir} (state: ${paths.stateFile})`,
           );
           stores.set(agentId, store);
           return store;
@@ -344,6 +354,7 @@ function createPluginConfigSchema(): OpenClawPluginConfigSchema {
           additionalProperties: false,
           properties: {
             rootDirName: { type: "string", minLength: 1 },
+            skillsDirName: { type: "string", minLength: 1 },
           },
         },
       },

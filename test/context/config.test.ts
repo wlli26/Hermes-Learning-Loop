@@ -4,8 +4,8 @@ import { defaultPluginConfig, pluginConfigSchema } from "../../src/config.js";
 describe("pluginConfigSchema", () => {
   it("provides stable defaults", () => {
     const parsed = pluginConfigSchema.parse({});
-    expect(parsed.review.toolCallCandidateThreshold).toBe(6);
-    expect(parsed.review.toolCallForceThreshold).toBe(10);
+    expect(parsed.review.toolCallCandidateThreshold).toBe(1);
+    expect(parsed.review.toolCallForceThreshold).toBe(2);
     expect(parsed.review.cooldownTurns).toBe(2);
     expect(parsed.store.rootDirName).toBe(".openclaw-hermes");
   });
@@ -19,6 +19,6 @@ describe("pluginConfigSchema", () => {
   });
 
   it("exports the same defaults object shape", () => {
-    expect(defaultPluginConfig.review.toolCallForceThreshold).toBe(10);
+    expect(defaultPluginConfig.review.toolCallForceThreshold).toBe(2);
   });
 });
