@@ -2,33 +2,62 @@
 
 让 OpenClaw agent 不只是记住历史，而是逐步形成经验。
 
-## 一键安装
+## 安装方式
+
+详见 [docs/INSTALLATION.md](./docs/INSTALLATION.md)。
+
+### 方式一：压缩包下载（无需 Git）
+
+```bash
+# 下载并解压（iFlytek GitLab 内网）
+curl -L https://git.iflytek.com/hy_spark_agent_builder/workflow-skill/claw-learning-loop/-/archive/develop/claw-learning-loop-develop.tar.gz | tar -xz
+cd claw-learning-loop-develop
+
+# 安装
+./install.sh
+# 或
+make install
+
+# 查看状态
+./install.sh status
+# 或
+make status
+
+# 卸载
+./uninstall.sh
+# 或
+make uninstall
+```
+
+重启 OpenClaw 即可生效。
+
+### 方式二：npx 一键安装
 
 **GitHub（公网）：**
 
 ```bash
 npx -y github:wlli26/Hermes-Learning-Loop install
+npx -y github:wlli26/Hermes-Learning-Loop status
+npx -y github:wlli26/Hermes-Learning-Loop uninstall
 ```
 
 **iFlytek GitLab（内网）：**
 
 ```bash
 npx -y git+https://git.iflytek.com/hy_spark_agent_builder/workflow-skill/claw-learning-loop.git#develop install
-```
-
-随后重启 OpenClaw 即可生效。其它命令：
-
-```bash
-# GitHub
-npx -y github:wlli26/Hermes-Learning-Loop status
-npx -y github:wlli26/Hermes-Learning-Loop uninstall
-
-# iFlytek GitLab
 npx -y git+https://git.iflytek.com/hy_spark_agent_builder/workflow-skill/claw-learning-loop.git#develop status
 npx -y git+https://git.iflytek.com/hy_spark_agent_builder/workflow-skill/claw-learning-loop.git#develop uninstall
 ```
 
-详见 [docs/INSTALLATION.md](./docs/INSTALLATION.md)。
+### 方式三：git clone + node
+
+```bash
+git clone https://git.iflytek.com/hy_spark_agent_builder/workflow-skill/claw-learning-loop.git -b develop
+cd claw-learning-loop
+node bin/cli.js install
+node bin/cli.js status
+node bin/cli.js uninstall
+```
 
 ---
 
