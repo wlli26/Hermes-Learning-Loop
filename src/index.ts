@@ -68,6 +68,17 @@ const pluginDefinition = {
             sessionId: params.sessionId,
           });
           fs.mkdirSync(path.dirname(reviewSessionFile), { recursive: true });
+
+          // Session 文件滚动：超过 100KB 则归档旧文件
+          if (fs.existsSync(reviewSessionFile)) {
+            const stats = fs.statSync(reviewSessionFile);
+            const maxSizeBytes = 100 * 1024; // 100KB
+            if (stats.size > maxSizeBytes) {
+              const archivePath = `${reviewSessionFile}.archived-${Date.now()}`;
+              fs.renameSync(reviewSessionFile, archivePath);
+              // 新的 review 将创建新文件
+            }
+          }
           const reviewModel = resolveReviewModelCompat({
             config: api.config,
             agentId,
