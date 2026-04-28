@@ -284,7 +284,7 @@ describe("applyGrowthResult", () => {
     ).toBe(true);
     expect(
       fs.existsSync(path.join(root, "skills", "duplicate-skill", "SKILL.md")),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("updates existing skill when slug is in dedupeHints", () => {

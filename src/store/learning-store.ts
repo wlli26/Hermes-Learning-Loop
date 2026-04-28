@@ -11,6 +11,11 @@ export type LearningStorePaths = {
 };
 
 export class LearningStore {
+  private sessionSnapshot: {
+    memories: Array<{ title: string; content: string; confidence: number }>;
+    skills: Array<{ slug: string; summary: string; state: string; confidence: number }>;
+  } | null = null;
+
   constructor(private readonly paths: LearningStorePaths) {}
 
   initialize() {
@@ -75,6 +80,8 @@ export class LearningStore {
       confidence: params.confidence,
       reviewId: params.reviewId,
       hitCount: state.skills[params.slug]?.hitCount ?? 0,
+      successCount: state.skills[params.slug]?.successCount ?? 0,
+      failureCount: state.skills[params.slug]?.failureCount ?? 0,
       updatedAt: new Date().toISOString(),
     };
     this.writeState(state);
@@ -121,7 +128,6 @@ export class LearningStore {
       (skill) => skill.state === "candidate" || skill.state === "promoted",
     );
 
-    // 排序: promoted 优先，然后按 hitCount 降序，最后按 updatedAt 降序
     return skills
       .sort((a, b) => {
         const stateOrder: Record<string, number> = { promoted: 0, candidate: 1 };
@@ -144,6 +150,31 @@ export class LearningStore {
     }>;
   }
 
+  listAllActiveSkills() {
+    const skills = Object.values(this.readState().skills).filter(
+      (skill) => skill.state === "candidate" || skill.state === "promoted",
+    );
+    return skills
+      .sort((a, b) => {
+        const stateOrder: Record<string, number> = { promoted: 0, candidate: 1 };
+        const stateDiff = (stateOrder[a.state] ?? 2) - (stateOrder[b.state] ?? 2);
+        if (stateDiff !== 0) return stateDiff;
+        if (b.hitCount !== a.hitCount) return b.hitCount - a.hitCount;
+        return b.updatedAt.localeCompare(a.updatedAt);
+      })
+      .map((skill) => ({
+        slug: skill.slug,
+        summary: skill.summary,
+        state: skill.state,
+        confidence: skill.confidence,
+      })) as Array<{
+      slug: string;
+      summary: string;
+      state: string;
+      confidence: number;
+    }>;
+  }
+
   listAllSkills() {
     return Object.values(this.readState().skills);
   }
@@ -153,6 +184,19 @@ export class LearningStore {
     const skill = state.skills[slug];
     if (!skill) return;
     skill.hitCount += 1;
+    skill.updatedAt = new Date().toISOString();
+    this.writeState(state);
+  }
+
+  recordSkillOutcome(slug: string, success: boolean) {
+    const state = this.readState();
+    const skill = state.skills[slug];
+    if (!skill) return;
+    if (success) {
+      skill.successCount = (skill.successCount ?? 0) + 1;
+    } else {
+      skill.failureCount = (skill.failureCount ?? 0) + 1;
+    }
     skill.updatedAt = new Date().toISOString();
     this.writeState(state);
   }
@@ -252,6 +296,31 @@ export class LearningStore {
     );
   }
 
+  freezeSnapshot() {
+    this.sessionSnapshot = {
+      memories: this.listRecentMemories(),
+      skills: this.listAllActiveSkills(),
+    };
+  }
+
+  hasSnapshot(): boolean {
+    return this.sessionSnapshot !== null;
+  }
+
+  getSnapshot() {
+    return this.sessionSnapshot ?? {
+      memories: this.listRecentMemories(),
+      skills: this.listAllActiveSkills(),
+    };
+  }
+
+  getMemoryCharCount(kind: "durable" | "user-model"): number {
+    const fileName = kind === "user-model" ? "user-model.md" : "durable.md";
+    const filePath = path.join(this.paths.memoryDir, fileName);
+    if (!fs.existsSync(filePath)) return 0;
+    return fs.readFileSync(filePath, "utf8").length;
+  }
+
   private readState(): LearningState {
     if (!fs.existsSync(this.paths.stateFile)) {
       throw new Error("LearningStore not initialized");
@@ -275,6 +344,8 @@ type LearningState = {
       confidence: number;
       reviewId: string;
       hitCount: number;
+      successCount: number;
+      failureCount: number;
       updatedAt: string;
     }
   >;

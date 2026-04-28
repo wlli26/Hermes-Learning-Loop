@@ -1,7 +1,8 @@
 import { LearningStore } from "../store/learning-store.js";
 
-const PROMOTION_HIT_THRESHOLD = 3; // 命中 3 次自动晋升
-const STALE_DAYS_THRESHOLD = 30; // 30 天未命中降为 stale
+const PROMOTION_HIT_THRESHOLD = 3;
+const STALE_DAYS_THRESHOLD = 30;
+const DEPRECATED_DAYS_THRESHOLD = 90;
 
 export function advanceSkillLifecycle(store: LearningStore) {
   const skills = store.listAllSkills();
@@ -16,6 +17,13 @@ export function advanceSkillLifecycle(store: LearningStore) {
       const daysSinceUpdate = daysSince(skill.updatedAt, now);
       if (daysSinceUpdate > STALE_DAYS_THRESHOLD) {
         store.updateSkillState(skill.slug, "stale");
+      }
+    }
+
+    if (skill.state === "stale") {
+      const daysSinceUpdate = daysSince(skill.updatedAt, now);
+      if (daysSinceUpdate > DEPRECATED_DAYS_THRESHOLD) {
+        store.updateSkillState(skill.slug, "deprecated");
       }
     }
   }

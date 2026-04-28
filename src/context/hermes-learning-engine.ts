@@ -77,16 +77,30 @@ export function createHermesLearningEngine(
     },
     async assemble(params): Promise<AssembleResult> {
       const store = resolveStore(options, params);
-      const memories = store.listRecentMemories();
-      const skills = store.listActiveSkills();
 
-      // 递增被注入的 skill 的命中计数
-      for (const skill of skills) {
+      if (!store.hasSnapshot()) {
+        store.freezeSnapshot();
+      }
+      const snapshot = store.getSnapshot();
+      const memories = snapshot.memories;
+
+      const userQuery = extractUserQuery(params.messages);
+      const allSkills = snapshot.skills;
+
+      const scoredSkills = allSkills
+        .map((skill) => ({
+          skill,
+          relevance: scoreSkillRelevance(skill, userQuery),
+        }))
+        .sort((a, b) => b.relevance - a.relevance)
+        .slice(0, 5)
+        .map((item) => item.skill);
+
+      for (const skill of scoredSkills) {
         store.incrementHitCount(skill.slug);
       }
 
-      // 对 promoted skill 读取全文内容
-      const skillsWithContent = skills.map((skill) => ({
+      const skillsWithContent = scoredSkills.map((skill) => ({
         ...skill,
         content:
           skill.state === "promoted" ? store.readSkillContent(skill.slug) : undefined,
@@ -117,7 +131,10 @@ export function createHermesLearningEngine(
             uniqueTools: new Set(toolCalls.map((message) => readToolName(message))).size,
             retries: countMatches(params.messages, /retry|重试/giu),
             reroutes: countMatches(params.messages, /reroute|改道|换一种/giu),
-            userCorrections: countMatches(params.messages, /不对|纠正|应该是|改成/giu),
+            userCorrections: countMatches(
+              params.messages,
+              /不对|纠正|应该是|改成|错了|重新来|no[,.\s]|wrong|not right|actually[,.\s]|instead[,.\s]|rather[,.\s]|correct(?:ion)?|redo|try again|再试/giu,
+            ),
             turnIndex: params.prePromptMessageCount + params.messages.length,
             lastReviewTurnIndex: lastReviewTurnIndexes.get(turnKey),
           },
@@ -382,4 +399,48 @@ function readMessageContent(message: AgentMessage) {
       .join("\n");
   }
   return JSON.stringify(content);
+}
+
+function extractUserQuery(messages: AgentMessage[]): string {
+  const userMessages = messages
+    .filter((m) => readMessageRole(m) === "user")
+    .map((m) => readMessageContent(m));
+  const last = userMessages[userMessages.length - 1] ?? "";
+  return last.slice(0, 500);
+}
+
+function scoreSkillRelevance(
+  skill: { slug: string; summary: string; state: string },
+  userQuery: string,
+): number {
+  if (!userQuery) return 0;
+
+  const stateBonus = skill.state === "promoted" ? 0.2 : 0;
+
+  const queryTokens = tokenize(userQuery);
+  const skillTokens = tokenize(`${skill.slug.replace(/-/g, " ")} ${skill.summary}`);
+
+  if (queryTokens.size === 0 || skillTokens.size === 0) return stateBonus;
+
+  let overlap = 0;
+  for (const token of queryTokens) {
+    if (skillTokens.has(token)) overlap++;
+  }
+
+  return overlap / Math.max(queryTokens.size, 1) + stateBonus;
+}
+
+function tokenize(text: string): Set<string> {
+  const tokens = new Set<string>();
+  for (const match of text.toLowerCase().matchAll(/[a-z]{2,}/gu)) {
+    tokens.add(match[0]);
+  }
+  const cjk = text.replace(/[^一-鿿]/gu, "");
+  for (let i = 0; i < cjk.length - 1; i++) {
+    tokens.add(cjk.slice(i, i + 2));
+  }
+  for (const char of cjk) {
+    tokens.add(char);
+  }
+  return tokens;
 }

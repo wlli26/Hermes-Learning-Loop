@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+const MAX_DURABLE_MEMORY_CHARS = 2200;
+const MAX_USER_MODEL_MEMORY_CHARS = 1375;
 export function applyGrowthResult(params) {
     const dedupeSet = new Set(params.result.dedupeHints ?? []);
     for (const memory of params.result.memoryCandidates) {
@@ -27,6 +29,7 @@ export function applyGrowthResult(params) {
             });
             // 重写 memory 文件
             params.store.rebuildMemoryFiles();
+            trimMemoryFileIfNeeded(params.store, normalized.kind);
         }
         else {
             params.store.saveMemoryRecord({
@@ -39,6 +42,7 @@ export function applyGrowthResult(params) {
             });
             const memoryFile = normalized.kind === "user-model" ? "user-model.md" : "durable.md";
             fs.appendFileSync(path.join(params.store.getPaths().memoryDir, memoryFile), `\n## ${normalized.title}\n${normalized.content}\n`, "utf8");
+            trimMemoryFileIfNeeded(params.store, normalized.kind);
         }
     }
     for (const [index, skill] of params.result.skillCandidates.entries()) {
@@ -120,6 +124,27 @@ export function applyGrowthResult(params) {
             }
         }
     }
+}
+function trimMemoryFileIfNeeded(store, kind) {
+    const limit = kind === "user-model" ? MAX_USER_MODEL_MEMORY_CHARS : MAX_DURABLE_MEMORY_CHARS;
+    const fileName = kind === "user-model" ? "user-model.md" : "durable.md";
+    const filePath = path.join(store.getPaths().memoryDir, fileName);
+    if (!fs.existsSync(filePath))
+        return;
+    const content = fs.readFileSync(filePath, "utf8");
+    if (content.length <= limit)
+        return;
+    const entries = content.split(/\n(?=## )/);
+    const kept = [];
+    let total = 0;
+    for (let i = entries.length - 1; i >= 0; i--) {
+        if (total + entries[i].length > limit && kept.length > 0)
+            break;
+        kept.unshift(entries[i]);
+        total += entries[i].length;
+    }
+    fs.writeFileSync(filePath, kept.join("\n"), "utf8");
+    console.log(`[GrowthWriter] Trimmed ${fileName}: ${content.length} → ${total} chars (limit ${limit})`);
 }
 function normalizeSkillCandidate(params) {
     if (!params.candidate || typeof params.candidate !== "object") {

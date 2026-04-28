@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 export class LearningStore {
     paths;
+    sessionSnapshot = null;
     constructor(paths) {
         this.paths = paths;
     }
@@ -44,6 +45,8 @@ export class LearningStore {
             confidence: params.confidence,
             reviewId: params.reviewId,
             hitCount: state.skills[params.slug]?.hitCount ?? 0,
+            successCount: state.skills[params.slug]?.successCount ?? 0,
+            failureCount: state.skills[params.slug]?.failureCount ?? 0,
             updatedAt: new Date().toISOString(),
         };
         this.writeState(state);
@@ -73,7 +76,6 @@ export class LearningStore {
     }
     listActiveSkills() {
         const skills = Object.values(this.readState().skills).filter((skill) => skill.state === "candidate" || skill.state === "promoted");
-        // 排序: promoted 优先，然后按 hitCount 降序，最后按 updatedAt 降序
         return skills
             .sort((a, b) => {
             const stateOrder = { promoted: 0, candidate: 1 };
@@ -92,6 +94,25 @@ export class LearningStore {
             confidence: skill.confidence,
         }));
     }
+    listAllActiveSkills() {
+        const skills = Object.values(this.readState().skills).filter((skill) => skill.state === "candidate" || skill.state === "promoted");
+        return skills
+            .sort((a, b) => {
+            const stateOrder = { promoted: 0, candidate: 1 };
+            const stateDiff = (stateOrder[a.state] ?? 2) - (stateOrder[b.state] ?? 2);
+            if (stateDiff !== 0)
+                return stateDiff;
+            if (b.hitCount !== a.hitCount)
+                return b.hitCount - a.hitCount;
+            return b.updatedAt.localeCompare(a.updatedAt);
+        })
+            .map((skill) => ({
+            slug: skill.slug,
+            summary: skill.summary,
+            state: skill.state,
+            confidence: skill.confidence,
+        }));
+    }
     listAllSkills() {
         return Object.values(this.readState().skills);
     }
@@ -101,6 +122,20 @@ export class LearningStore {
         if (!skill)
             return;
         skill.hitCount += 1;
+        skill.updatedAt = new Date().toISOString();
+        this.writeState(state);
+    }
+    recordSkillOutcome(slug, success) {
+        const state = this.readState();
+        const skill = state.skills[slug];
+        if (!skill)
+            return;
+        if (success) {
+            skill.successCount = (skill.successCount ?? 0) + 1;
+        }
+        else {
+            skill.failureCount = (skill.failureCount ?? 0) + 1;
+        }
         skill.updatedAt = new Date().toISOString();
         this.writeState(state);
     }
@@ -168,6 +203,28 @@ export class LearningStore {
         }
         fs.writeFileSync(path.join(this.paths.memoryDir, "durable.md"), durableMemories.join(""), "utf8");
         fs.writeFileSync(path.join(this.paths.memoryDir, "user-model.md"), userModelMemories.join(""), "utf8");
+    }
+    freezeSnapshot() {
+        this.sessionSnapshot = {
+            memories: this.listRecentMemories(),
+            skills: this.listAllActiveSkills(),
+        };
+    }
+    hasSnapshot() {
+        return this.sessionSnapshot !== null;
+    }
+    getSnapshot() {
+        return this.sessionSnapshot ?? {
+            memories: this.listRecentMemories(),
+            skills: this.listAllActiveSkills(),
+        };
+    }
+    getMemoryCharCount(kind) {
+        const fileName = kind === "user-model" ? "user-model.md" : "durable.md";
+        const filePath = path.join(this.paths.memoryDir, fileName);
+        if (!fs.existsSync(filePath))
+            return 0;
+        return fs.readFileSync(filePath, "utf8").length;
     }
     readState() {
         if (!fs.existsSync(this.paths.stateFile)) {

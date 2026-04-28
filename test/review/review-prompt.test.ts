@@ -8,8 +8,8 @@ describe("buildReviewPrompt", () => {
       reasonCodes: ["tool-call-force-threshold"],
     });
 
-    expect(prompt).toContain("method, checklist, decision rubric");
-    expect(prompt).toContain("even if the user never asks for a \"workflow\" or \"SOP\"");
-    expect(prompt).toContain("Ignore environment/bootstrap noise");
+    expect(prompt).toContain("Non-trivial workflow or troubleshooting sequence discovered");
+    expect(prompt).toContain("template skill");
+    expect(prompt).toContain("Ignore bootstrap noise");
   });
 });

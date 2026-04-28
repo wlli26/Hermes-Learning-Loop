@@ -9,7 +9,7 @@ describe("plugin compatibility", () => {
     });
     it("keeps package metadata aligned with the manifest id", () => {
         const packageJson = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
-        expect(packageJson.name).toBe("hermes-learning");
+        expect(packageJson.name).toBe("hermes-learning-loop");
         expect(packageJson.openclaw?.extensions).toEqual(["./dist/src/index.js"]);
     });
 });

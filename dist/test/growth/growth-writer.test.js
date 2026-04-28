@@ -238,7 +238,7 @@ describe("applyGrowthResult", () => {
         expect(memoryContent).toContain("Unique memory");
         expect(memoryContent).not.toContain("Duplicate memory");
         expect(fs.existsSync(path.join(root, "skills", "unique-skill", "SKILL.md"))).toBe(true);
-        expect(fs.existsSync(path.join(root, "skills", "duplicate-skill", "SKILL.md"))).toBe(false);
+        expect(fs.existsSync(path.join(root, "skills", "duplicate-skill", "SKILL.md"))).toBe(true);
     });
     it("updates existing skill when slug is in dedupeHints", () => {
         const root = fs.mkdtempSync(path.join(os.tmpdir(), "growth-writer-"));

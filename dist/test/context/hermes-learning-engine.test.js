@@ -11,9 +11,23 @@ describe("createHermesLearningEngine", () => {
                 .mockReturnValue([
                 { slug: "terse-close", summary: "Close tasks tersely", state: "candidate" },
             ]),
+            listAllActiveSkills: vi
+                .fn()
+                .mockReturnValue([
+                { slug: "terse-close", summary: "Close tasks tersely", state: "candidate" },
+            ]),
             saveReview: vi.fn().mockReturnValue("review_1"),
             incrementHitCount: vi.fn(),
+            recordSkillOutcome: vi.fn(),
             readSkillContent: vi.fn().mockReturnValue(undefined),
+            hasSnapshot: vi.fn().mockReturnValue(false),
+            freezeSnapshot: vi.fn(),
+            getSnapshot: vi.fn().mockReturnValue({
+                memories: [{ title: "Preference", content: "Keep replies terse." }],
+                skills: [
+                    { slug: "terse-close", summary: "Close tasks tersely", state: "candidate" },
+                ],
+            }),
         };
         const engine = createHermesLearningEngine({
             store: store,
@@ -77,9 +91,14 @@ describe("createHermesLearningEngine", () => {
         const store = {
             listRecentMemories: vi.fn().mockReturnValue([]),
             listActiveSkills: vi.fn().mockReturnValue([]),
+            listAllActiveSkills: vi.fn().mockReturnValue([]),
             saveReview: vi.fn(),
             incrementHitCount: vi.fn(),
+            recordSkillOutcome: vi.fn(),
             readSkillContent: vi.fn().mockReturnValue(undefined),
+            hasSnapshot: vi.fn().mockReturnValue(false),
+            freezeSnapshot: vi.fn(),
+            getSnapshot: vi.fn().mockReturnValue({ memories: [], skills: [] }),
         };
         const decideReview = vi.fn().mockReturnValue({
             shouldReview: true,
@@ -116,9 +135,14 @@ describe("createHermesLearningEngine", () => {
         const store = {
             listRecentMemories: vi.fn().mockReturnValue([]),
             listActiveSkills: vi.fn().mockReturnValue([]),
+            listAllActiveSkills: vi.fn().mockReturnValue([]),
             saveReview: vi.fn().mockReturnValue("review_1"),
             incrementHitCount: vi.fn(),
+            recordSkillOutcome: vi.fn(),
             readSkillContent: vi.fn().mockReturnValue(undefined),
+            hasSnapshot: vi.fn().mockReturnValue(false),
+            freezeSnapshot: vi.fn(),
+            getSnapshot: vi.fn().mockReturnValue({ memories: [], skills: [] }),
         };
         const buildReviewPrompt = vi.fn().mockReturnValue("review prompt");
         const engine = createHermesLearningEngine({
